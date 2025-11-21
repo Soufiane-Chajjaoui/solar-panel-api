@@ -6,6 +6,8 @@ This directory contains the deep learning model for solar panel image classifica
 
 - `mobilenet_solar_final.keras`: Pre-trained MobileNet model for classifying solar panels as clean or dirty
 
+Link : https://drive.google.com/file/d/1YPr2HAaA4AI4q2v8konA1rO7ah2kwKm0/view?usp=drive_link
+
 ## Usage
 
 ### Test with an Image
