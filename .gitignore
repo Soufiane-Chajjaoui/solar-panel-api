@@ -1,0 +1,104 @@
+# ====================================
+# 📦 Python
+# ====================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+env/
+.venv/
+
+serviceAccountKey.json
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+pip-wheel-metadata/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ====================================
+# 🧠 Machine Learning / AI
+# ====================================
+# Modèles et checkpoints
+*.h5
+*.hdf5
+*.ckpt
+*.pb
+*.pth
+*.pt
+*.onnx
+checkpoints/
+# models/
+saved_models/
+model_weights/
+runs/
+logs/
+
+# ====================================
+# 📸 Images & datasets
+# ====================================
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.tiff
+*.webp
+*.mp4
+*.avi
+*.mov
+*.csv
+*.zip
+*.tar
+*.gz
+dataset/
+data/
+uploads/
+tmp/
+media/
+
+# ====================================
+# 🧩 IDE / éditeurs
+# ====================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ====================================
+# 🔒 OS & divers
+# ====================================
+.DS_Store
+Thumbs.db
+*.log
+*.bak
+*.swp
+*.tmp
+
+# ====================================
+# ⚙️ FastAPI / Uvicorn / Cache
+# ====================================
+*.db
+*.sqlite3
+*.sqlite
+__pycache__/
+.mypy_cache/
+pytest_cache/
+.cache/
+.logs/

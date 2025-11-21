@@ -1,0 +1,35 @@
+# Core Framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Authentication & Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
+pydantic-settings>=2.0.0
+email-validator>=2.0.0
+
+# Database & ORM
+firebase-admin>=6.0.0
+sqlalchemy>=2.0.0
+
+# IoT & Communication
+paho-mqtt>=1.6.0
+
+# Image Processing & ML
+opencv-python>=4.8.0
+tensorflow>=2.13.0
+pillow>=10.0.0
+scikit-learn==1.3.2
+joblib>=1.3.0
+
+# Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
+cloudinary>=1.38.0
+
+# Rate Limiting & Security
+slowapi>=0.1.8
+
+# Logging & Monitoring
+python-json-logger>=2.0.0

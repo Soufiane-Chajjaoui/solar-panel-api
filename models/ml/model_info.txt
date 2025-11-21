@@ -1,0 +1,22 @@
+Model Name: Gradient Boosting Classifier
+Accuracy: 96.48% (from training)
+F1-score: 0.9343
+AUC: 0.9870
+
+Trained features (input order):
+[temperature, humidity, light, R, G, B, RGB_mean, RGB_std, G_over_R, B_over_R]
+
+Target variable:
+cleaning_status  (0 = clean, 1 = dirty)
+
+Dependencies:
+- Python 3.8+
+- joblib
+- scikit-learn >= 1.0
+- numpy
+
+Usage:
+1. Compute derived features (RGB_mean, RGB_std, G_over_R, B_over_R) from R,G,B.
+2. Create feature vector in the order above.
+3. Load scaler.joblib and call scaler.transform(X).
+4. Load best_model_GradientBoosting.joblib and call model.predict(X_scaled).
