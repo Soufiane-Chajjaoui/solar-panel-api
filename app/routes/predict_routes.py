@@ -90,8 +90,8 @@ def predict_panel_condition(
 
         if prediction_result is None:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Service de prédiction non disponible. Le modèle Deep Learning n'est pas chargé. Veuillez contacter l'administrateur."
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Échec de la prédiction"
             )
 
         processing_time = (time.time() - start_time) * 1000  # Convert to milliseconds
@@ -118,16 +118,13 @@ def predict_panel_condition(
         # Créer le timestamp
         prediction_timestamp = datetime.utcnow().isoformat() + "Z"
 
-        # Check if this is mock data (when model is not loaded)
-        is_mock = "dl_mock" in prediction_result and prediction_result.get("dl_mock", False)
-
         # Formater la réponse
         response_data = PredictResponse(
             panel_id=request.panel_id,
             image_url=request.image_url,  # Include image_url in response
             predicted_class=prediction_result["dl_prediction"],
             confidence=prediction_result["dl_confidence"],
-            status=prediction_result["dl_status"] + (" (MOCK)" if is_mock else ""),
+            status=prediction_result["dl_status"],
             probability=prediction_result["dl_probability"],
             class_probabilities=prediction_result["dl_class_probabilities"],
             predicted_class_index=prediction_result["dl_predicted_class"],
