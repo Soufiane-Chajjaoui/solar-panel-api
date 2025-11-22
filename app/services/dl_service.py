@@ -16,10 +16,16 @@ logger = logging.getLogger(__name__)
 
 # Chemin vers le modèle DL
 MODEL_DIR = Path(__file__).parent.parent.parent / "models" / "dl"
-MODEL_PATH = MODEL_DIR / "mobilenet_solar_final.keras"
+# MODEL_PATH = MODEL_DIR / "mobilenet_solar_final.keras"
+MODEL_PATH = MODEL_DIR / "mobilenet_solar_final.tflite"
 
 # Variable globale pour le modèle
 _dl_model = None
+
+_tflite_interpreter = None
+_tflite_input_index = None
+_tflite_output_index = None
+
 
 # Taille d'image attendue par MobileNet (224x224 est standard pour MobileNet)
 IMAGE_SIZE = (224, 224)
@@ -47,38 +53,71 @@ DL_CLASS_TO_STATUS = {
 }
 
 
-def load_dl_model() -> Optional[tf.keras.Model]:
+# def load_dl_model() -> Optional[tf.keras.Model]:
+#     """
+#     Charge le modèle Deep Learning MobileNet depuis le fichier.
+    
+#     Returns:
+#         Modèle Keras chargé ou None en cas d'erreur
+#     """
+#     global _dl_model
+    
+#     if _dl_model is not None:
+#         return _dl_model
+    
+#     try:
+#         if not MODEL_PATH.exists():
+#             logger.error(f"❌ Fichier modèle DL introuvable: {MODEL_PATH}")
+#             return None
+        
+#         logger.info(f"📦 Chargement du modèle DL depuis {MODEL_PATH}")
+#         _dl_model = tf.keras.models.load_model(str(MODEL_PATH))
+#         logger.info("✅ Modèle DL chargé avec succès")
+        
+#         # Vérifier la taille d'image attendue
+#         input_shape = _dl_model.input_shape
+#         if input_shape and len(input_shape) >= 3:
+#             global IMAGE_SIZE
+#             IMAGE_SIZE = (input_shape[1], input_shape[2]) if input_shape[1] and input_shape[2] else (224, 224)
+#             logger.info(f"📐 Taille d'image attendue par le modèle: {IMAGE_SIZE}")
+        
+#         return _dl_model
+        
+#     except Exception as e:
+#         logger.error(f"❌ Erreur lors du chargement du modèle DL: {e}", exc_info=True)
+#         return None
+
+# Load dl model with tflite interpreter
+def load_dl_model():
     """
-    Charge le modèle Deep Learning MobileNet depuis le fichier.
-    
-    Returns:
-        Modèle Keras chargé ou None en cas d'erreur
+    Charge le modèle TFLite avec un interpreter.
     """
-    global _dl_model
-    
-    if _dl_model is not None:
-        return _dl_model
-    
+    global _tflite_interpreter, _tflite_input_index, _tflite_output_index
+
+    if _tflite_interpreter is not None:
+        return _tflite_interpreter
+
+    if not MODEL_PATH.exists():
+        logger.error(f"❌ Fichier modèle TFLite introuvable: {MODEL_PATH}")
+        return None
+
     try:
-        if not MODEL_PATH.exists():
-            logger.error(f"❌ Fichier modèle DL introuvable: {MODEL_PATH}")
-            return None
-        
-        logger.info(f"📦 Chargement du modèle DL depuis {MODEL_PATH}")
-        _dl_model = tf.keras.models.load_model(str(MODEL_PATH))
-        logger.info("✅ Modèle DL chargé avec succès")
-        
-        # Vérifier la taille d'image attendue
-        input_shape = _dl_model.input_shape
-        if input_shape and len(input_shape) >= 3:
-            global IMAGE_SIZE
-            IMAGE_SIZE = (input_shape[1], input_shape[2]) if input_shape[1] and input_shape[2] else (224, 224)
-            logger.info(f"📐 Taille d'image attendue par le modèle: {IMAGE_SIZE}")
-        
-        return _dl_model
-        
+        logger.info(f"📦 Chargement du modèle TFLite depuis {MODEL_PATH}")
+
+        _tflite_interpreter = tf.lite.Interpreter(model_path=str(MODEL_PATH))
+        _tflite_interpreter.allocate_tensors()
+
+        input_details = _tflite_interpreter.get_input_details()
+        output_details = _tflite_interpreter.get_output_details()
+
+        _tflite_input_index = input_details[0]["index"]
+        _tflite_output_index = output_details[0]["index"]
+
+        logger.info("✅ Modèle TFLite chargé avec succès")
+        return _tflite_interpreter
+
     except Exception as e:
-        logger.error(f"❌ Erreur lors du chargement du modèle DL: {e}", exc_info=True)
+        logger.error(f"❌ Erreur lors du chargement du modèle TFLite: {e}", exc_info=True)
         return None
 
 
@@ -218,8 +257,17 @@ def predict_from_image(image: Union[str, Path, Image.Image, np.ndarray, bytes]) 
         
         # Faire la prédiction
         logger.debug(f"🤖 Prédiction en cours avec le modèle...")
-        predictions = model.predict(processed_image, verbose=0)
-        
+        # predictions = model.predict(processed_image, verbose=0)
+        # Set input tensor
+        model.set_tensor(_tflite_input_index, processed_image.astype(np.float32))
+
+        # Run inference
+        model.invoke()
+
+        # Get output
+        predictions = model.get_tensor(_tflite_output_index)
+
+                
         # Gérer différentes configurations de sortie
         if len(predictions.shape) != 2:
             logger.error(f"❌ Format de prédiction non attendu: {predictions.shape}")
