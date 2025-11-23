@@ -3,7 +3,7 @@ Service Deep Learning pour prédire l'état de propreté des panneaux solaires v
 Utilise un modèle MobileNet entraîné pour la classification d'images.
 """
 
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite
 import numpy as np
 import logging
 from typing import Dict, Any, Optional, Tuple, Union
@@ -104,7 +104,7 @@ def load_dl_model():
     try:
         logger.info(f"📦 Chargement du modèle TFLite depuis {MODEL_PATH}")
 
-        _tflite_interpreter = tf.lite.Interpreter(model_path=str(MODEL_PATH))
+        _tflite_interpreter = tflite.Interpreter(model_path=str(MODEL_PATH))
         _tflite_interpreter.allocate_tensors()
 
         input_details = _tflite_interpreter.get_input_details()

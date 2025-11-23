@@ -1,16 +1,22 @@
 version: '3.8'
 
 services:
-  mosquitto:
-    image: eclipse-mosquitto:latest
-    container_name: mosquitto-broker
+  app:
+    build: .
+    container_name: solar-panel-api
     restart: unless-stopped
     ports:
-      - "1883:1883"      # Port MQTT standard
-      - "9001:9001"      # Port WebSocket (optionnel)
+      - "8000:8000"
+    env_file:
+      - .env
     volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
+      - .:/app
+      - /app/__pycache__
     environment:
       - TZ=Europe/Paris
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
