@@ -10,6 +10,7 @@ from app.core.firebase_client import db
 from app.core.config import settings, validate_settings
 from app.core.mqtt_client import init_mqtt, close_mqtt, get_mqtt_client
 from app.routes import panel_routes, cleaning_routes, user_routes, auth_routes, mqtt_routes, upload_routes, predict_routes, history_routes, feedback_routes
+from app.services.dl_service import initialize_dl_model
 from app.services.mqtt_service import MQTTService
 import logging
 import time
@@ -193,6 +194,10 @@ async def lifespan(_: FastAPI):
     """Gestionnaire du cycle de vie de l'application."""
     # Démarrage
     logger.info("🚀 Application démarrée")
+
+    # Initialiser le modèle DL
+    logger.info("🤖 Initialisation du modèle DL...")
+    await initialize_dl_model()
 
     # Initialiser MQTT
     logger.info("🔗 Initialisation du client MQTT...")
