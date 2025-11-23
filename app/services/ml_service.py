@@ -1,60 +1,61 @@
 """
 Service ML pour prédire l'état de propreté des panneaux solaires.
-Utilise un modèle Gradient Boosting entraîné.
+Utilise un modèle ONNX optimisé pour les performances et la taille réduite.
 """
 
-import joblib
 import numpy as np
 import logging
 import os
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 from pathlib import Path
+
+try:
+    import onnxruntime as ort
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+    logger.warning("⚠️ ONNX Runtime non disponible, fonctionnalités ML limitées")
 
 logger = logging.getLogger(__name__)
 
 # Chemin vers les modèles
 MODEL_DIR = Path(__file__).parent.parent.parent / "models" / "ml"
-SCALER_PATH = MODEL_DIR / "scaler.joblib"
-MODEL_PATH = MODEL_DIR / "best_model.joblib"
+MODEL_PATH = MODEL_DIR / "best_model.onnx"
 
-# Variables globales pour le modèle et le scaler
-_model = None
-_scaler = None
+# Variable globale pour la session ONNX
+_session = None
 
 
-def load_model() -> Tuple[Optional[Any], Optional[Any]]:
+def load_model() -> Optional[Any]:
     """
-    Charge le modèle ML et le scaler depuis les fichiers.
-    
+    Charge le modèle ONNX depuis le fichier.
+
     Returns:
-        Tuple (model, scaler) ou (None, None) en cas d'erreur
+        Session ONNX ou None en cas d'erreur
     """
-    global _model, _scaler
-    
-    if _model is not None and _scaler is not None:
-        return _model, _scaler
-    
+    global _session
+
+    if _session is not None:
+        return _session
+
+    if not ONNX_AVAILABLE:
+        logger.error("❌ ONNX Runtime non disponible")
+        return None
+
     try:
-        if not SCALER_PATH.exists():
-            logger.error(f"❌ Fichier scaler introuvable: {SCALER_PATH}")
-            return None, None
-        
         if not MODEL_PATH.exists():
-            logger.error(f"❌ Fichier modèle introuvable: {MODEL_PATH}")
-            return None, None
-        
-        logger.info(f"📦 Chargement du scaler depuis {SCALER_PATH}")
-        _scaler = joblib.load(SCALER_PATH)
-        
-        logger.info(f"📦 Chargement du modèle depuis {MODEL_PATH}")
-        _model = joblib.load(MODEL_PATH)
-        
-        logger.info("✅ Modèle ML chargé avec succès")
-        return _model, _scaler
-        
+            logger.error(f"❌ Fichier modèle ONNX introuvable: {MODEL_PATH}")
+            return None
+
+        logger.info(f"📦 Chargement du modèle ONNX depuis {MODEL_PATH}")
+        _session = ort.InferenceSession(str(MODEL_PATH))
+
+        logger.info("✅ Modèle ONNX chargé avec succès")
+        return _session
+
     except Exception as e:
-        logger.error(f"❌ Erreur lors du chargement du modèle ML: {e}")
-        return None, None
+        logger.error(f"❌ Erreur lors du chargement du modèle ONNX: {e}")
+        return None
 
 
 def prepare_features(data: Dict[str, Any]) -> Optional[np.ndarray]:
@@ -106,8 +107,8 @@ def prepare_features(data: Dict[str, Any]) -> Optional[np.ndarray]:
 
 def predict_cleaning_status(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Prédit l'état de propreté d'un panneau solaire.
-    
+    Prédit l'état de propreté d'un panneau solaire en utilisant ONNX.
+
     Args:
         data: Dictionnaire contenant les données du capteur:
             - temperature: float
@@ -116,7 +117,7 @@ def predict_cleaning_status(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             - R: int (valeur RGB rouge)
             - G: int (valeur RGB vert)
             - B: int (valeur RGB bleu)
-    
+
     Returns:
         Dictionnaire avec:
             - ml_prediction: str ("clean" ou "dirty")
@@ -125,40 +126,52 @@ def predict_cleaning_status(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         ou None en cas d'erreur
     """
     try:
-        # Charger le modèle si nécessaire
-        model, scaler = load_model()
-        
-        if model is None or scaler is None:
-            logger.error("❌ Modèle ML non disponible")
+        # Charger le modèle ONNX si nécessaire
+        session = load_model()
+
+        if session is None:
+            logger.error("❌ Modèle ONNX non disponible")
             return None
-        
+
         # Préparer les features
         features = prepare_features(data)
         if features is None:
             return None
-        
-        # Normaliser les features
-        features_scaled = scaler.transform(features)
-        
-        # Faire la prédiction
-        prediction = model.predict(features_scaled)[0]
-        
-        # Obtenir les probabilités pour les deux classes
+
+        # Convertir en float32 pour ONNX
+        features = features.astype(np.float32)
+
+        # Faire l'inférence ONNX
+        input_name = session.get_inputs()[0].name
+        inputs = {input_name: features}
+        outputs = session.run(None, inputs)
+
+        # outputs[0] = prédictions, outputs[1] = probabilités
+        prediction = int(outputs[0][0])
+
+        # Extraire les probabilités
         probability_clean = None
         probability_dirty = None
         confidence = None
-        
-        if hasattr(model, "predict_proba"):
-            proba = model.predict_proba(features_scaled)[0]
-            # proba[0] = clean (classe 0), proba[1] = dirty (classe 1)
-            probability_clean = float(proba[0])
-            probability_dirty = float(proba[1])
+
+        if len(outputs) > 1:
+            # Les probabilités sont dans outputs[1]
+            probas = outputs[1][0]
+            if isinstance(probas, dict):
+                # Format dictionnaire
+                probability_clean = float(probas.get(0, probas.get('0', 0)))
+                probability_dirty = float(probas.get(1, probas.get('1', 0)))
+            else:
+                # Format array
+                probability_clean = float(probas[0])
+                probability_dirty = float(probas[1])
+
             # La confiance est la probabilité de la classe prédite
-            confidence = float(proba[int(prediction)])
-        
+            confidence = probability_dirty if prediction == 1 else probability_clean
+
         # Convertir en statut lisible
-        ml_prediction = "dirty" if int(prediction) == 1 else "clean"
-        
+        ml_prediction = "dirty" if prediction == 1 else "clean"
+
         result = {
             "ml_prediction": ml_prediction,
             "ml_confidence": confidence,
@@ -167,21 +180,21 @@ def predict_cleaning_status(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                 "dirty": probability_dirty
             } if probability_clean is not None and probability_dirty is not None else None
         }
-        
+
         if confidence is not None:
-            logger.info(f"✅ Prédiction ML: {ml_prediction} (confiance: {confidence:.2%})")
+            logger.info(f"✅ Prédiction ONNX: {ml_prediction} (confiance: {confidence:.2%})")
         else:
-            logger.info(f"✅ Prédiction ML: {ml_prediction}")
-        
+            logger.info(f"✅ Prédiction ONNX: {ml_prediction}")
+
         return result
-        
+
     except Exception as e:
-        logger.error(f"❌ Erreur lors de la prédiction ML: {e}")
+        logger.error(f"❌ Erreur lors de la prédiction ONNX: {e}")
         return None
 
 
 def is_model_loaded() -> bool:
-    """Vérifie si le modèle est chargé."""
-    global _model, _scaler
-    return _model is not None and _scaler is not None
+    """Vérifie si le modèle ONNX est chargé."""
+    global _session
+    return _session is not None
 

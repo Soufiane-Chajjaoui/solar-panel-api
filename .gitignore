@@ -42,7 +42,7 @@ pip-wheel-metadata/
 *.pb
 *.pth
 *.pt
-*.onnx
+# *.onnx
 checkpoints/
 # models/
 saved_models/

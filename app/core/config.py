@@ -45,7 +45,7 @@ class Settings:
     RATE_LIMIT_PERIOD: int = int(os.getenv("RATE_LIMIT_PERIOD", "60"))  # secondes
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = ["*"]
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
