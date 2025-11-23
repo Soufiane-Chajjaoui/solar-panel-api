@@ -1,5 +1,5 @@
 # Multi-stage build for production
-FROM python:3.8-slim as builder
+FROM python:3.13-slim as builder
 
 # Set working directory
 WORKDIR /app
@@ -19,12 +19,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Production stage
-FROM python:3.8-slim
+FROM python:3.13-slim
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y \
-    libffi6 \
-    libssl1.1 \
+    libffi8 \
+    libssl3 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
