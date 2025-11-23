@@ -17,19 +17,22 @@ router = APIRouter(prefix="/panels", tags=["Panels"])
     summary="Récupérer tous les panneaux",
     responses={200: {"description": "Liste des panneaux avec données détaillées"}}
 )
-def get_panels():
+def get_panels(limit: int = 50, offset: int = 0):
     """
     Récupère tous les panneaux et leurs dernières données depuis Firestore.
     Retourne un tableau où chaque panneau est représenté par un tableau contenant
     les données DL et capteurs séparées.
+
+    - **limit**: Nombre maximum de panneaux à retourner (défaut: 50)
+    - **offset**: Nombre de panneaux à sauter (défaut: 0)
     """
     try:
         if db is None:
             logger.warning("⚠️ Firestore non disponible")
             return []
 
-        # Fetch latest sensor data from solar_panel_data
-        sensor_docs = db.collection("solar_panel_data").stream()
+        # Fetch latest sensor data from solar_panel_data with limit
+        sensor_docs = db.collection("solar_panel_data").order_by("timestamp", direction="DESCENDING").limit(limit * 2).stream()
 
         # Group sensor data by panel_id and keep latest
         sensor_data = {}
@@ -37,12 +40,11 @@ def get_panels():
             data = doc.to_dict()
             panel_id = data.get("panel_id")
             if panel_id:
-                current_timestamp = data.get("timestamp", "")
-                if panel_id not in sensor_data or current_timestamp > sensor_data[panel_id].get("timestamp", ""):
+                if panel_id not in sensor_data:
                     sensor_data[panel_id] = data
 
-        # Fetch latest DL predictions from dl_predictions
-        dl_docs = db.collection("dl_predictions").stream()
+        # Fetch latest DL predictions from dl_predictions with limit
+        dl_docs = db.collection("dl_predictions").order_by("timestamp", direction="DESCENDING").limit(limit * 2).stream()
 
         # Group DL data by panel_id and keep latest
         dl_data = {}
@@ -50,12 +52,11 @@ def get_panels():
             data = doc.to_dict()
             panel_id = data.get("panel_id")
             if panel_id:
-                current_timestamp = data.get("timestamp", "")
-                if panel_id not in dl_data or current_timestamp > dl_data[panel_id].get("timestamp", ""):
+                if panel_id not in dl_data:
                     dl_data[panel_id] = data
 
         # Build response array for each panel
-        panels = []
+        all_panels = []
         for panel_id in set(sensor_data.keys()) | set(dl_data.keys()):
             panel_response = []
 
@@ -107,9 +108,12 @@ def get_panels():
 
             # Only add panels that have at least some data
             if panel_response:
-                panels.append(panel_response)
+                all_panels.append(panel_response)
 
-        logger.info(f"✅ Returned {len(panels)} panels with detailed merged data from Firestore")
+        # Apply offset and limit
+        panels = all_panels[offset:offset + limit]
+
+        logger.info(f"✅ Returned {len(panels)} panels (offset: {offset}, limit: {limit}) with detailed merged data from Firestore")
         return panels
 
     except Exception as e:
