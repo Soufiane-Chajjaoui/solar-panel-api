@@ -13,14 +13,14 @@ from app.routes import panel_routes, cleaning_routes, user_routes, auth_routes, 
 from app.services.dl_service import initialize_dl_model
 from app.services.mqtt_service import MQTTService
 import logging
-import time
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # ============ Configuration du logging ============
 logging.basicConfig(
     level=settings.LOG_LEVEL,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s %(levelname)s %(name)s %(message)s'
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('fastapi_app')
 
 # ============ Validation des paramètres ============
 try:
@@ -39,6 +39,9 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json"
 )
+
+Instrumentator().instrument(app).expose(app)
+logger.info("📊 Monitoring Prometheus ACTIVÉ")
 
 # ============ Configuration CORS ============
 app.add_middleware(

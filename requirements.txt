@@ -48,3 +48,6 @@ httpx==0.25.0
 # Additional utilities
 click==8.1.7
 pyyaml==6.0.2
+
+# Monitoring
+prometheus-fastapi-instrumentator==6.1.0
